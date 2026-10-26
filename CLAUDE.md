@@ -33,14 +33,14 @@ Todo el procesamiento ocurre en el navegador. Las APIs de Open-Meteo son públic
 | Capa | Tecnología | Nota |
 |------|-----------|------|
 | Lenguaje | TypeScript (`strict: true`) | Sin `any` implícito; sin `!` sin justificación |
-| Build / dev | A definir en la Tarea 1 (`package.json` + `tsconfig.json`) | Sin frameworks de UI |
+| Build / dev | **Vite** (solo dev server y build; justificado en `design.md` §Decisiones y Tarea 1) | Sin frameworks de UI |
 | UI | HTML5 + CSS3 + DOM APIs nativas | Accesibilidad: contraste, foco visible, `label` asociado |
 | HTTP | `fetch` nativo + `AbortController` | Timeout de **10 000 ms** en ambos clientes |
-| Tests unitarios / componentes | **Vitest** + **@testing-library/dom** | Entorno `jsdom` |
+| Tests unitarios / componentes | **Vitest** + **@testing-library/dom** | Entorno `jsdom` (decidido en Tarea 1) |
 | Property-based testing | **fast-check** | Mínimo **100 iteraciones** por propiedad |
-| Evals | Vitest + reporte propio | Ver `tests/evals/` (§6.3) |
+| Evals | Vitest + reporte propio | Ver `tests/evals/` (§6.3); `npm run eval` incluye los `*.prop.test.ts` registrados en el manifest |
 
-**Prohibido** introducir frameworks de UI (React, Svelte, Vue), bundlers pesados, o dependencias de red adicionales sin que la Tarea 1 lo justifique explícitamente en `tasks.md`.
+**Prohibido** introducir frameworks de UI (React, Svelte, Vue), bundlers pesados (Vite está justificado y permitido), o dependencias de red adicionales sin que la Tarea 1 lo justifique explícitamente en `tasks.md`.
 
 ---
 
@@ -72,6 +72,12 @@ Si dos documentos se contradicen: gana el más alto **y se corrige el inferior e
 | D1 | `requirements.md` Req. 3.1 nombra el parámetro legacy `relativehumidity_2m`; la API actual usa `relative_humidity_2m` | Se usa **`relative_humidity_2m`** | `design.md` §Data Models, `tasks.md` §Notes, `BUSSINESS_RULES.md` BR-FCT-01 |
 | D2 | Req. 4.1 exige el nombre de la API; Req. 4.7 exige fallback al nombre del usuario | El **servicio** preserva el valor crudo; el **fallback** se aplica en la capa de presentación | `BUSSINESS_RULES.md` BR-GEO-04 / BR-UI-05 |
 | D3 | ¿Dónde se aplica el formato numérico? | **Solo en presentación** (`formatters.ts`). Servicios almacenan valores crudos | `BUSSINESS_RULES.md` BR-FMT-01 |
+| D4 | D1 se resolvió en `design.md` pero `requirements.md` (mayor autoridad) seguía con el nombre legacy | Se **corrigió `requirements.md`** a `relative_humidity_2m` (v1.1) | `requirements.md` Req. 3.1, commit `docs(requirements)` |
+| D5 | ¿Quién valida la entrada vacía: formulario o controlador? | **Solo `CitySearchForm`**; el controlador recibe valor ya recortado | `BUSSINESS_RULES.md` BR-UI-10 |
+| D6 | ¿Quién traduce error de dominio → mensaje? | **`src/utils/errorMessages.ts`**; `ErrorMessage` solo pinta | `BUSSINESS_RULES.md` §7, `tasks.md` 7.3 |
+| D7 | Búsquedas solapadas | **Token de petición** que descarta respuestas obsoletas; sin deshabilitar `City_Input` | Req. 4.8, BR-UI-09 |
+| D8 | Coordenadas fuera de rango | `CITY_NOT_FOUND`, sin error nuevo | Req. 3.6, BR-FCT-03 |
+| D9 | Pruebas y evals opcionales en `tasks.md` | **Obligatorios** (se retiró `*`) | `tasks.md` §Notes |
 
 > Si el usuario pide cambiar alguna de estas decisiones, se actualizan **todos** los documentos afectados en el mismo cambio.
 
@@ -101,11 +107,13 @@ Lab03_Kiro_Specs/
 ├── requirements.md
 ├── design.md
 ├── tasks.md
+├── vite.config.ts             # Vite + Vitest (entorno jsdom)
 ├── index.html                 # SPA: formulario, zona de carga, zona de error, zona de clima
 ├── package.json               # scripts: test / eval / typecheck / verify
 ├── tsconfig.json              # strict: true
 ├── src/
 │   ├── main.ts                # composition root: instancia y cablea todo
+│   ├── config.ts              # API_TIMEOUT_MS, URLs base
 │   ├── WeatherController.ts   # orquestador del flujo
 │   ├── styles.css
 │   ├── types/index.ts         # Coordinates, WeatherData, AppState, tipos discriminados
@@ -120,9 +128,11 @@ Lab03_Kiro_Specs/
 │   │   ├── WeatherDisplay.ts
 │   │   ├── LoadingIndicator.ts
 │   │   └── ErrorMessage.ts
-│   └── utils/formatters.ts
+│   └── utils/
+│       ├── formatters.ts
+│       └── errorMessages.ts   # error de dominio → mensaje del catálogo
 └── tests/
-    └── evals/                 # harness de evals (EDD) + manifest
+    └── evals/                 # manifest, fixtures, contratos y escenarios (EDD)
 ```
 
 **Regla de testing:** los archivos de prueba van **colocados junto al código** (`src/services/GeocodingService.test.ts`), tal como define `design.md` §Estructura de Archivos de Test. Solo el harness de evals vive en `tests/evals/`.

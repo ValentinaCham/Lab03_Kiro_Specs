@@ -235,7 +235,9 @@ Antes de dar por cerrada una tarea, el agente revisa punto por punto:
 ### Reglas de negocio
 - [ ] ¿Se cumplen todas las reglas `BR-*` aplicables de `BUSSINESS_RULES.md`?
 - [ ] ¿Los valores crudos llegan intactos al formateador (BR-FMT-01)?
-- [ ] ¿Los mensajes de error coinciden **exactamente** con el catálogo de errores?
+- [ ] ¿Los mensajes de error coinciden **exactamente** con el catálogo de errores (vía `errorMessages.ts`)?
+- [ ] ¿Todo dato externo se pinta con `textContent`?
+- [ ] ¿El indicador de carga se oculta también ante error de geocodificación?
 
 ### Pruebas y evals
 - [ ] ¿La prueba nueva falló antes de implementar (RED documentado)?
@@ -296,7 +298,8 @@ El agente **debe** parar y consultar al usuario cuando:
 - ❌ Hacer llamadas a las APIs reales desde una prueba o desde el harness de evals.
 - ❌ Relajar un test o un eval para que pase.
 - ❌ Dejar `skip`, `only`, `todo`, `console.log` de depuración o código muerto.
-- ❌ Hardcodear el API key / la URL base sin exponerla como constante configurable.
+- ❌ Hardcodear el API key / la URL base / el timeout sin exponerlos desde `src/config.ts`.
+- ❌ Usar `innerHTML` con datos provenientes de una API externa (BR-SEC-01).
 - ❌ Renumerar IDs existentes (`BR-*`, `P-N`, `Req.N.M`): son referencias históricas.
 - ❌ Reordenar o renumerar el Task Dependency Graph de `tasks.md` sin actualizar las referencias cruzadas.
 
