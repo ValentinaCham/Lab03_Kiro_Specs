@@ -6,7 +6,7 @@ Implementación de una SPA estática (HTML/CSS/TypeScript vanilla) que permite a
 
 ## Tasks
 
-- [ ] 1. Configurar la estructura del proyecto y la cadena de herramientas
+- [x] 1. Configurar la estructura del proyecto y la cadena de herramientas
   - Inicializar el proyecto con `npm init` y configurar TypeScript (`tsconfig.json`) con modo estricto.
   - Instalar Vite (dev server y build; justificado en `design.md` §Decisiones: el navegador no ejecuta TypeScript).
   - Instalar y configurar Vitest con entorno `jsdom`; instalar fast-check (fijar versión mayor; `fc.stringOf` no existe en v4) y `@testing-library/dom`.
@@ -18,7 +18,7 @@ Implementación de una SPA estática (HTML/CSS/TypeScript vanilla) que permite a
   - _Requisitos: 1.1, 1.2_
 
 - [ ] 2. Definir tipos e interfaces centrales
-  - [ ] 2.1 Crear el archivo `src/types/index.ts` con todas las interfaces y tipos del dominio
+  - [x] 2.1
     - Definir `Coordinates`, `WeatherData`, `AppState`.
     - Definir los tipos discriminados `GeocodingResult`, `GeocodingError`, `ForecastResult`, `ForecastError`.
     - `Coordinates.cityName` es opcional (`cityName?: string`).
@@ -27,33 +27,33 @@ Implementación de una SPA estática (HTML/CSS/TypeScript vanilla) que permite a
     - _Requisitos: 2.2, 3.2, 5.1, 5.2_
 
 - [ ] 3. Implementar los clientes HTTP
-  - [ ] 3.1 Implementar `src/clients/GeocodingClient.ts`
+  - [x] 3.1
     - Construir la URL hacia `https://geocoding-api.open-meteo.com/v1/search` con los parámetros `name` (URL-encoded) y `count=1`.
     - Implementar timeout con `API_TIMEOUT_MS` usando `AbortController` y `setTimeout`; `clearTimeout` al recibir la respuesta.
     - Retornar la respuesta cruda (`Response`) o lanzar `TimeoutError` (timeout) / `NetworkError` (otro fallo de `fetch`).
     - Usar `GEOCODING_BASE_URL` de `src/config.ts`.
     - _Requisitos: 2.1, 2.4_
 
-  - [ ] 3.2 Escribir prueba de propiedad para GeocodingClient — URL de geocodificación
+  - [x] 3.2
     - **Propiedad 3: Construcción correcta de la URL de Geocodificación**
     - Usar `fc.string({ minLength: 1 })` para generar nombres de ciudad arbitrarios.
     - Decodificar la URL (`new URL(...).searchParams`) y verificar que `name` sea igual al nombre original y que `count=1` esté presente (no comparar cadenas: `+` y `%20` son equivalentes).
     - **Valida: Requisito 2.1**
 
-  - [ ] 3.3 Implementar `src/clients/ForecastClient.ts`
+  - [x] 3.3
     - Construir la URL hacia `https://api.open-meteo.com/v1/forecast` con `latitude`, `longitude` y `current=temperature_2m,relative_humidity_2m,precipitation`.
     - Implementar timeout con `API_TIMEOUT_MS` usando `AbortController` y `setTimeout`; `clearTimeout` al recibir la respuesta.
     - Retornar la respuesta cruda (`Response`) o lanzar `TimeoutError` / `NetworkError`.
     - Usar `FORECAST_BASE_URL` de `src/config.ts`.
     - _Requisitos: 3.1, 3.3_
 
-  - [ ] 3.4 Escribir prueba de propiedad para ForecastClient — URL de pronóstico
+  - [x] 3.4
     - **Propiedad 6: Construcción correcta de la URL de Pronóstico**
     - Usar `fc.tuple(fc.float({ min: -90, max: 90 }), fc.float({ min: -180, max: 180 }))` para generar pares de coordenadas.
     - Verificar que la URL contenga `latitude`, `longitude` y el parámetro `current` con las tres variables requeridas.
     - **Valida: Requisito 3.1**
 
-  - [ ] 3.5 Escribir pruebas unitarias para los clientes (`GeocodingClient.test.ts`, `ForecastClient.test.ts`)
+  - [x] 3.5
     - Con `vi.useFakeTimers`: no aborta a 9 999 ms y aborta a 10 000 ms lanzando `TimeoutError`.
     - Un fallo de `fetch` lanza `NetworkError` (distinto de `TimeoutError`).
     - `clearTimeout` se invoca tras una respuesta exitosa.
@@ -61,7 +61,7 @@ Implementación de una SPA estática (HTML/CSS/TypeScript vanilla) que permite a
     - _Requisitos: 2.4, 3.3 · BR-ERR-01, BR-ERR-05, BR-ERR-07, BR-ERR-08_
 
 - [ ] 4. Implementar GeocodingService
-  - [ ] 4.1 Implementar `src/services/GeocodingService.ts`
+  - [x] 4.1
     - Recibir `cityName: string` y llamar a `GeocodingClient`.
     - Validar que `results` exista y no esté vacío; si lo está, retornar `{ success: false, error: { type: 'CITY_NOT_FOUND' } }`.
     - Validar que `results[0].latitude` y `results[0].longitude` sean números finitos presentes y dentro de rango (lat ∈ [-90, 90], lon ∈ [-180, 180]); si alguno falta, es nulo, no numérico o está fuera de rango, retornar `CITY_NOT_FOUND` (BR-FCT-03).
@@ -72,25 +72,25 @@ Implementación de una SPA estática (HTML/CSS/TypeScript vanilla) que permite a
     - `cityName` se copia sin transformar y puede quedar `undefined`.
     - _Requisitos: 2.2, 2.3, 2.4, 2.6, 2.7, 3.6, 5.1, 5.4, 5.5_
 
-  - [ ] 4.2 Escribir prueba de propiedad para GeocodingService — extracción de coordenadas
+  - [x] 4.2
     - **Propiedad 4: Extracción de coordenadas del primer resultado**
     - Usar `fc.record({ latitude: fc.double({ min: -90, max: 90, noNaN: true }), longitude: fc.double({ min: -180, max: 180, noNaN: true }), name: fc.string() })` para generar resultados de API válidos (finitos).
     - Verificar que los valores extraídos sean numéricamente iguales a los del primer elemento sin ninguna transformación.
     - **Valida: Requisitos 2.2, 5.1**
 
-  - [ ] 4.3 Escribir prueba de propiedad para GeocodingService — coordenadas faltantes
+  - [x] 4.3
     - **Propiedad 5: Validación de campos de coordenadas faltantes**
     - Generar `latitude` y `longitude` de forma **independiente**: `null`, `undefined`, ausente, string o fuera de rango; asegurar que al menos uno sea inválido (el otro puede ser válido).
     - Verificar que el resultado sea `CITY_NOT_FOUND` y que no se haya llamado a `ForecastService`.
     - **Valida: Requisitos 2.6, 3.6**
 
-  - [ ] 4.4 Escribir prueba de propiedad para GeocodingService — respuestas HTTP no-2xx
+  - [x] 4.4
     - **Propiedad 8 (parte Geocoding): Respuestas HTTP no-2xx siempre generan error**
     - Usar `fc.integer({ min: 300, max: 599 })` para generar códigos de estado no exitosos.
     - Verificar que el resultado sea `{ success: false, error: { type: 'SERVICE_ERROR', statusCode } }` con el código generado.
     - **Valida: Requisitos 2.7, 5.4**
 
-  - [ ] 4.5 Escribir pruebas unitarias para GeocodingService
+  - [x] 4.5
     - Probar: respuesta con 0 resultados → `CITY_NOT_FOUND`.
     - Probar: error de red → `NETWORK_ERROR`.
     - Probar: timeout simulado → `TIMEOUT`.
@@ -101,7 +101,7 @@ Implementación de una SPA estática (HTML/CSS/TypeScript vanilla) que permite a
     - _Requisitos: 2.2, 2.3, 2.4, 2.6, 3.6, 5.5_
 
 - [ ] 5. Implementar ForecastService
-  - [ ] 5.1 Implementar `src/services/ForecastService.ts`
+  - [x] 5.1
     - Recibir `lat: number, lon: number` y llamar a `ForecastClient`.
     - Validar que `current.temperature_2m`, `current.relative_humidity_2m` y `current.precipitation` sean valores numéricos presentes (no nulos ni undefined); si alguno falta, retornar `{ success: false, error: { type: 'INCOMPLETE_DATA' } }`.
     - Mapear `current` a `WeatherData` sin transformar los valores crudos.
@@ -109,59 +109,59 @@ Implementación de una SPA estática (HTML/CSS/TypeScript vanilla) que permite a
     - Capturar errores de red, timeout (por tipo de error), HTTP no-2xx e `INVALID_RESPONSE` de forma análoga a `GeocodingService`.
     - _Requisitos: 3.2, 3.3, 3.4, 3.5, 5.2, 5.4, 5.5_
 
-  - [ ] 5.2 Escribir prueba de propiedad para ForecastService — round-trip de parseo
+  - [x] 5.2
     - **Propiedad 7: Round-trip de parseo de la respuesta Forecast → WeatherData**
     - Usar `fc.record({ temperature_2m: fc.double({ noNaN: true, noDefaultInfinity: true, min: -100, max: 100 }), relative_humidity_2m: fc.double({ noNaN: true, noDefaultInfinity: true, min: 0, max: 100 }), precipitation: fc.double({ noNaN: true, noDefaultInfinity: true, min: 0, max: 1000 }) })` para generar objetos `current` válidos.
     - Verificar que los valores en `WeatherData` sean numéricamente iguales a los del JSON crudo.
     - **Valida: Requisitos 3.2, 5.2**
 
-  - [ ] 5.3 Escribir prueba de propiedad para ForecastService — campos nulos generan error de datos incompletos
+  - [x] 5.3
     - **Propiedad 10: Campos meteorológicos faltantes generan error de datos incompletos**
     - Generar combinaciones de objetos `current` donde al menos uno de los tres campos sea `null`, `undefined` o esté ausente.
     - Verificar que el resultado sea `{ success: false, error: { type: 'INCOMPLETE_DATA' } }`.
     - **Valida: Requisito 3.5**
 
-  - [ ] 5.4 Escribir prueba de propiedad para ForecastService — respuestas HTTP no-2xx
+  - [x] 5.4
     - **Propiedad 8 (parte Forecast): Respuestas HTTP no-2xx siempre generan error**
     - Usar `fc.integer({ min: 300, max: 599 })` para generar códigos de estado no exitosos.
     - Verificar que el resultado sea `{ success: false, error: { type: 'SERVICE_ERROR', statusCode } }`.
     - **Valida: Requisitos 3.4, 5.4**
 
-  - [ ] 5.5 Escribir prueba de propiedad para ForecastService — 2xx con cuerpo inválido
+  - [x] 5.5
     - **Propiedad 9 (parte Forecast): Respuestas 2xx con cuerpo inválido generan error**
     - Generar strings malformados u objetos sin los campos requeridos del JSON de Forecast.
     - Verificar que el resultado sea `{ success: false, error: { type: 'INVALID_RESPONSE' } }`.
     - **Valida: Requisito 5.5**
 
-  - [ ] 5.6 Escribir pruebas unitarias para ForecastService
+  - [x] 5.6
     - Probar: error de red → `NETWORK_ERROR`.
     - Probar: timeout simulado → `TIMEOUT`.
     - Probar: respuesta exitosa con todos los campos presentes → `{ success: true, data: WeatherData }`.
     - Probar: valor `0` en un campo meteorológico es válido (BR §10).
     - _Requisitos: 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 6. Punto de control — Verificar servicios y clientes
+- [x] 6. Punto de control — Verificar servicios y clientes
   - Asegurarse de que todas las pruebas de los módulos `clients/` y `services/` pasen sin errores. Consultar al usuario si surge alguna duda.
 
 - [ ] 7. Implementar utilidades de formateo
-  - [ ] 7.1 Implementar `src/utils/formatters.ts`
+  - [x] 7.1
     - Exportar `formatTemperature(value: number): string` → `value.toFixed(1) + ' °C'`.
     - Exportar `formatHumidity(value: number): string` → `Math.round(value) + ' %'`.
     - Exportar `formatPrecipitation(value: number): string` → `value.toFixed(1) + ' mm'`.
     - _Requisitos: 5.3_
 
-  - [ ] 7.2 Escribir prueba de propiedad para formatters — formateo numérico correcto
+  - [x] 7.2
     - **Propiedad 11: Formateo numérico correcto de los valores del clima**
     - Usar `fc.double({ noNaN: true, noDefaultInfinity: true, min: -1e6, max: 1e6 })` para temperatura y precipitación; verificar que la cadena resultante tenga como máximo 1 dígito decimal.
     - Usar el mismo generador para humedad; verificar que la cadena resultante no contenga punto decimal.
     - **Valida: Requisito 5.3**
 
-  - [ ] 7.3 Implementar `src/utils/errorMessages.ts`
+  - [x] 7.3
     - Exportar `getErrorMessage(service: 'geocoding' | 'forecast', error): string` con el catálogo exacto de `BUSSINESS_RULES.md` §7 (incluye `VALIDATION_EMPTY` y `CITY_NOT_FOUND`).
     - Resolver aquí la identidad del servicio que falló (`SERVICE_ERROR` es igual en ambos servicios).
     - _Requisitos: 1.3, 1.4, 2.3, 2.4, 2.7, 3.3, 3.4, 3.5, 5.4, 5.5_
 
-  - [ ] 7.4 Escribir pruebas unitarias para `errorMessages.ts` (`errorMessages.test.ts`)
+  - [x] 7.4
     - Probar los 11 casos del catálogo con el mensaje **exacto** y que los dos servicios producen mensajes distintos para el mismo tipo de error.
     - _Requisitos: 2.4, 2.7, 3.3, 3.4, 5.4 · BR-ERR-02, BR-TST-08_
 

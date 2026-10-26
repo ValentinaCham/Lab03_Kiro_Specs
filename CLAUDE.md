@@ -119,7 +119,8 @@ Lab03_Kiro_Specs/
 │   ├── types/index.ts         # Coordinates, WeatherData, AppState, tipos discriminados
 │   ├── clients/
 │   │   ├── GeocodingClient.ts # URL + timeout 10s → Response | throw
-│   │   └── ForecastClient.ts
+│   │   ├── ForecastClient.ts
+│   │   └── request.ts          # timeout con AbortController + errores tipados (compartido)
 │   ├── services/
 │   │   ├── GeocodingService.ts
 │   │   └── ForecastService.ts
@@ -130,9 +131,14 @@ Lab03_Kiro_Specs/
 │   │   └── ErrorMessage.ts
 │   └── utils/
 │       ├── formatters.ts
-│       └── errorMessages.ts   # error de dominio → mensaje del catálogo
+│       ├── errorMessages.ts   # error de dominio → mensaje del catálogo
+│       └── guards.ts           # isRecord / isFiniteNumber para fronteras JSON
 └── tests/
-    └── evals/                 # manifest, fixtures, contratos y escenarios (EDD)
+    └── evals/                 # manifest, fixtures, props, contratos y escenarios (EDD)
+        ├── evals.manifest.ts
+        ├── fixtures.ts
+        ├── props.ts
+        └── manifest.eval.test.ts
 ```
 
 **Regla de testing:** los archivos de prueba van **colocados junto al código** (`src/services/GeocodingService.test.ts`), tal como define `design.md` §Estructura de Archivos de Test. Solo el harness de evals vive en `tests/evals/`.
