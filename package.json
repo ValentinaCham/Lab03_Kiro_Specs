@@ -4,6 +4,9 @@
   "private": true,
   "description": "SPA de pronóstico del clima actual por ciudad (Open-Meteo)",
   "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
