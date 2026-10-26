@@ -112,8 +112,9 @@ Lab03_Kiro_Specs/
 ├── package.json               # scripts: test / eval / typecheck / verify
 ├── tsconfig.json              # strict: true
 ├── src/
-│   ├── main.ts                # composition root: instancia y cablea todo
-│   ├── config.ts              # API_TIMEOUT_MS, URLs base
+│   ├── main.ts                # punto de entrada: resuelve los contenedores del DOM
+│   ├── app.ts                 # composition root: instancia y cablea las capas
+│   ├── config.ts              # API_TIMEOUT_MS, URLs base, CURRENT_FIELDS
 │   ├── WeatherController.ts   # orquestador del flujo
 │   ├── styles.css
 │   ├── types/index.ts         # Coordinates, WeatherData, AppState, tipos discriminados

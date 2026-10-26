@@ -17,7 +17,7 @@ Implementación de una SPA estática (HTML/CSS/TypeScript vanilla) que permite a
   - Crear el punto de entrada `index.html` y `src/main.ts`.
   - _Requisitos: 1.1, 1.2_
 
-- [ ] 2. Definir tipos e interfaces centrales
+- [x] 2.
   - [x] 2.1
     - Definir `Coordinates`, `WeatherData`, `AppState`.
     - Definir los tipos discriminados `GeocodingResult`, `GeocodingError`, `ForecastResult`, `ForecastError`.
@@ -26,7 +26,7 @@ Implementación de una SPA estática (HTML/CSS/TypeScript vanilla) que permite a
     - Exportar todos los tipos para su uso en el resto de capas.
     - _Requisitos: 2.2, 3.2, 5.1, 5.2_
 
-- [ ] 3. Implementar los clientes HTTP
+- [x] 3.
   - [x] 3.1
     - Construir la URL hacia `https://geocoding-api.open-meteo.com/v1/search` con los parámetros `name` (URL-encoded) y `count=1`.
     - Implementar timeout con `API_TIMEOUT_MS` usando `AbortController` y `setTimeout`; `clearTimeout` al recibir la respuesta.
@@ -60,7 +60,7 @@ Implementación de una SPA estática (HTML/CSS/TypeScript vanilla) que permite a
     - El cliente devuelve la `Response` sin leer el cuerpo.
     - _Requisitos: 2.4, 3.3 · BR-ERR-01, BR-ERR-05, BR-ERR-07, BR-ERR-08_
 
-- [ ] 4. Implementar GeocodingService
+- [x] 4.
   - [x] 4.1
     - Recibir `cityName: string` y llamar a `GeocodingClient`.
     - Validar que `results` exista y no esté vacío; si lo está, retornar `{ success: false, error: { type: 'CITY_NOT_FOUND' } }`.
@@ -100,7 +100,7 @@ Implementación de una SPA estática (HTML/CSS/TypeScript vanilla) que permite a
     - Probar: 2xx con HTML en lugar de JSON → `INVALID_RESPONSE`.
     - _Requisitos: 2.2, 2.3, 2.4, 2.6, 3.6, 5.5_
 
-- [ ] 5. Implementar ForecastService
+- [x] 5.
   - [x] 5.1
     - Recibir `lat: number, lon: number` y llamar a `ForecastClient`.
     - Validar que `current.temperature_2m`, `current.relative_humidity_2m` y `current.precipitation` sean valores numéricos presentes (no nulos ni undefined); si alguno falta, retornar `{ success: false, error: { type: 'INCOMPLETE_DATA' } }`.
@@ -143,7 +143,7 @@ Implementación de una SPA estática (HTML/CSS/TypeScript vanilla) que permite a
 - [x] 6. Punto de control — Verificar servicios y clientes
   - Asegurarse de que todas las pruebas de los módulos `clients/` y `services/` pasen sin errores. Consultar al usuario si surge alguna duda.
 
-- [ ] 7. Implementar utilidades de formateo
+- [x] 7.
   - [x] 7.1
     - Exportar `formatTemperature(value: number): string` → `value.toFixed(1) + ' °C'`.
     - Exportar `formatHumidity(value: number): string` → `Math.round(value) + ' %'`.
@@ -165,8 +165,8 @@ Implementación de una SPA estática (HTML/CSS/TypeScript vanilla) que permite a
     - Probar los 11 casos del catálogo con el mensaje **exacto** y que los dos servicios producen mensajes distintos para el mismo tipo de error.
     - _Requisitos: 2.4, 2.7, 3.3, 3.4, 5.4 · BR-ERR-02, BR-TST-08_
 
-- [ ] 8. Implementar componentes de UI
-  - [ ] 8.1 Implementar `src/components/CitySearchForm.ts`
+- [x] 8.
+  - [x] 8.1
     - Renderizar el campo `City_Input` con `maxlength="100"`, un `<label>` asociado y el botón de envío.
     - Manejar el evento `submit` del formulario y el evento `keydown` para la tecla Enter en `City_Input`.
     - Mostrar mensaje de validación inline (región `aria-live`) cuando la entrada esté vacía o sea solo whitespace; es la única validación de la app (BR-UI-10).
@@ -175,20 +175,20 @@ Implementación de una SPA estática (HTML/CSS/TypeScript vanilla) que permite a
     - Exponer `focus()` para devolver el foco tras un error.
     - _Requisitos: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 6.1, 6.3_
 
-  - [ ] 8.2 Escribir prueba de propiedad para CitySearchForm — rechazo de entradas de solo whitespace
+  - [x] 8.2
     - **Propiedad 1: Rechazo de entradas de solo whitespace**
     - Usar `fc.stringOf(fc.constantFrom(' ', '\t', '\n', '\r'))` para generar strings de solo whitespace (incluido el vacío).
     - Verificar que el callback `onSearch` no se invoque y que se muestre el mensaje de validación.
     - **Valida: Requisitos 1.3, 1.4, 2.5**
 
-  - [ ] 8.3 Escribir prueba de propiedad para CitySearchForm — trim antes de enviar
+  - [x] 8.3
     - **Propiedad 2: Trim del nombre de ciudad antes de enviar**
     - Usar strings con whitespace en los extremos pero con al menos un carácter no-whitespace en el centro.
     - Verificar que el valor recibido en el callback `onSearch` sea igual a `cityName.trim()` (tramo a de P2).
     - El tramo b (el `name` decodificado de la URL) se prueba en `WeatherController.test.ts` (tarea 9.3) con `fetch` mockeado.
     - **Valida: Requisito 1.5**
 
-  - [ ] 8.4 Escribir pruebas unitarias para CitySearchForm
+  - [x] 8.4
     - Probar: renderizado del campo con `maxlength=100`.
     - Probar: envío con clic en el botón.
     - Probar: envío con tecla Enter mientras `City_Input` está enfocado.
@@ -197,7 +197,7 @@ Implementación de una SPA estática (HTML/CSS/TypeScript vanilla) que permite a
     - Probar: el mensaje de validación se limpia al editar el campo.
     - _Requisitos: 1.1, 1.2, 1.6, 6.1, 6.3_
 
-  - [ ] 8.5 Implementar `src/components/WeatherDisplay.ts`
+  - [x] 8.5
     - Firma `render(weather, apiCityName: string | undefined, typedCityName: string)`.
     - Renderizar nombre de ciudad, temperatura (°C), humedad (%) y precipitación (mm) usando las funciones de `formatters.ts`.
     - Aplicar fallback a `typedCityName` si `apiCityName` está ausente, vacío o solo espacios.
@@ -205,30 +205,30 @@ Implementación de una SPA estática (HTML/CSS/TypeScript vanilla) que permite a
     - Exponer un método `clear()` para limpiar el contenido del display.
     - _Requisitos: 4.1, 4.2, 4.3, 4.4, 4.7, 6.5_
 
-  - [ ] 8.6 Escribir prueba de propiedad para WeatherDisplay — display contiene todos los campos con unidades
+  - [x] 8.6
     - **Propiedad 12: Weather_Display contiene todos los campos con sus unidades**
     - Usar `fc.record` con `fc.double({ noNaN: true, noDefaultInfinity: true, min: -1e6, max: 1e6 })` para generar objetos `WeatherData` arbitrarios.
     - Leer el resultado con `textContent` (no `innerHTML`).
     - Verificar que el HTML renderizado contenga el nombre de ciudad, el valor de temperatura seguido de "°C", humedad seguido de "%" y precipitación seguido de "mm".
     - **Valida: Requisitos 4.1, 4.2, 4.3, 4.4**
 
-  - [ ] 8.7 Implementar `src/components/LoadingIndicator.ts`
+  - [x] 8.7
     - Exponer métodos `show()` y `hide()` para controlar la visibilidad del indicador; su contenedor es una región `aria-live`.
     - _Requisitos: 1.5, 4.5, 6.3_
 
-  - [ ] 8.8 Implementar `src/components/ErrorMessage.ts`
+  - [x] 8.8
     - Recibir un string de mensaje (ya traducido por `errorMessages.ts`) y renderizarlo en la zona de errores, que es una región `aria-live`.
     - Exponer un método `clear()` para limpiar mensajes previos.
     - _Requisitos: 1.3, 1.4, 1.6, 2.3, 2.4, 3.3, 3.4, 3.5_
 
-  - [ ] 8.9 Escribir pruebas unitarias para `WeatherDisplay`, `LoadingIndicator` y `ErrorMessage`
+  - [x] 8.9
     - `WeatherDisplay`: fallback al nombre del usuario cuando `apiCityName` es `undefined`, `''` o solo espacios (BR-UI-05); `clear()` vacía el contenido; un nombre con `<b>`/`<script>` se muestra literal (BR-SEC-01).
     - `LoadingIndicator`: `show()` lo hace visible y `hide()` lo oculta; contenedor `aria-live`.
     - `ErrorMessage`: pinta el string recibido, `clear()` lo borra; contenedor `aria-live`.
     - _Requisitos: 4.5, 4.7, 6.3, 6.5 · BR-UI-01, BR-UI-02, BR-UI-05, BR-SEC-01_
 
-- [ ] 9. Implementar WeatherController
-  - [ ] 9.1 Implementar `src/WeatherController.ts`
+- [x] 9.
+  - [x] 9.1
     - Orquestar el flujo completo: recibir `cityName` (ya validado y recortado) desde `CitySearchForm`, limpiar estado previo, mostrar `LoadingIndicator`, llamar a `GeocodingService`, luego a `ForecastService`, y actualizar la UI según el resultado. No valida la entrada.
     - Mantener un `AppState` y derivar de él lo que se pinta.
     - Limpiar el `WeatherDisplay` y el `ErrorMessage` **antes** de emitir la primera solicitud de cada nueva búsqueda.
@@ -238,13 +238,13 @@ Implementación de una SPA estática (HTML/CSS/TypeScript vanilla) que permite a
     - Devolver el foco a `City_Input` ante cualquier error.
     - _Requisitos: 1.5, 1.6, 2.1, 2.2, 2.3, 2.4, 2.6, 2.7, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.8_
 
-  - [ ] 9.2 Escribir prueba de propiedad para WeatherController — limpieza del display al iniciar nueva búsqueda
+  - [x] 9.2
     - **Propiedad 13: Limpieza del Weather_Display al iniciar nueva búsqueda**
     - Simular un estado previo con datos en `WeatherDisplay` y lanzar una nueva búsqueda con mocks de servicios.
     - Verificar el **orden de llamadas**: `WeatherDisplay.clear()` y `ErrorMessage.clear()` preceden a `GeocodingService.geocode`.
     - **Valida: Requisito 4.6**
 
-  - [ ] 9.3 Escribir pruebas unitarias para WeatherController
+  - [x] 9.3
     - Probar: flujo exitoso completo (geocoding → forecast → display renderizado).
     - Probar: `GeocodingService` retorna `CITY_NOT_FOUND` → mensaje correcto en `ErrorMessage`.
     - Probar: `ForecastService` retorna `INCOMPLETE_DATA` → mensaje correcto en `ErrorMessage`.
@@ -252,7 +252,7 @@ Implementación de una SPA estática (HTML/CSS/TypeScript vanilla) que permite a
     - Probar (tramo b de P2): con `fetch` mockeado, el `name` decodificado de la URL de geocodificación es igual a `cityName.trim()`.
     - _Requisitos: 1.5, 4.5_
 
-  - [ ] 9.4 Escribir pruebas unitarias de reglas del controlador (`WeatherController.test.ts`)
+  - [x] 9.4
     - BR-UI-07: si la geocodificación falla, `ForecastService.getForecast` **no** se invoca.
     - BR-UI-04: el error previo se limpia al iniciar una nueva búsqueda.
     - BR-UI-09 / INV-16: con dos búsquedas solapadas, la respuesta de la primera se descarta aunque llegue después.
@@ -260,40 +260,40 @@ Implementación de una SPA estática (HTML/CSS/TypeScript vanilla) que permite a
     - Coordenadas fuera de rango: no se llama a `ForecastService` y se muestra `CITY_NOT_FOUND`.
     - _Requisitos: 1.6, 3.6, 4.5, 4.8 · BR-UI-04, BR-UI-06, BR-UI-07, BR-UI-09_
 
-- [ ] 10. Punto de control — Verificar controlador y componentes UI
+- [x] 10. Punto de control — Verificar controlador y componentes UI
   - Asegurarse de que todas las pruebas de `components/` y `WeatherController` pasen. Consultar al usuario si surge alguna duda.
 
-- [ ] 11. Conectar capas y construir la SPA final
-  - [ ] 11.1 Conectar todo en `src/main.ts`
+- [x] 11.
+  - [x] 11.1
     - Instanciar `GeocodingClient`, `ForecastClient`, `GeocodingService`, `ForecastService`, los componentes UI y `WeatherController`.
     - Montar los componentes en el DOM del `index.html`.
     - Registrar el callback `onSearch` de `CitySearchForm` hacia `WeatherController`.
     - Importar las constantes de `src/config.ts`; ningún cliente hardcodea URL ni timeout.
     - _Requisitos: 1.1, 1.2, 4.5_
 
-  - [ ] 11.2 Completar `index.html` con el marcado base y estilos CSS
+  - [x] 11.2
     - Añadir la estructura HTML semántica: formulario de búsqueda, zona de indicador de carga, zona de errores y zona de display del clima.
     - Añadir estilos CSS básicos en `src/styles.css` que aseguren legibilidad y accesibilidad (contraste ≥ 4.5:1, foco visible, tamaño de fuente adecuado).
     - _Requisitos: 1.1, 4.1, 4.2, 4.3, 4.4, 6.1, 6.2, 6.4_
 
-  - [ ] 11.3 Escribir pruebas de integración de extremo a extremo
+  - [x] 11.3
     - Usar mocks de `GeocodingClient` y `ForecastClient` para simular flujos completos.
     - Probar el flujo exitoso: búsqueda → geocoding → forecast → datos visibles en el DOM.
     - Probar el flujo de error: geocoding falla → mensaje de error visible, `City_Input` accesible, indicador de carga oculto.
     - _Requisitos: 1.5, 1.6, 4.1, 4.5_
 
-  - [ ] 11.4 Registrar y ejecutar los evals (EDD)
+  - [x] 11.4
     - Registrar en `tests/evals/evals.manifest.ts` un eval por cada requisito y propiedad P1–P13 (propiedad por referencia a su `*.prop.test.ts`, más evals de contrato de URL y de escenario).
     - Implementar `npm run eval` (sale con código ≠ 0 si falla uno) con `seed` tomado de `FC_SEED`.
     - Ejecutar `npm run verify` en verde.
     - _Requisitos: todos · BR-TST-02, BR-TST-04, BR-TST-05, BR-TST-06_
 
-  - [ ] 11.5 Verificar accesibilidad del DOM final
+  - [x] 11.5
     - Prueba sobre `index.html`: `<label>` asociado, regiones `aria-live` para carga, error y validación, foco visible definido en CSS.
     - Revisión manual de contraste ≥ 4.5:1 (BR-UI-08).
     - _Requisitos: 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 12. Punto de control final — Verificar suite completa de pruebas
+- [x] 12. Punto de control final — Verificar suite completa de pruebas
   - Ejecutar `vitest --run` y asegurarse de que todas las pruebas (unitarias, de propiedad e integración) pasen sin errores. Consultar al usuario si surge alguna duda.
 
 ## Notes

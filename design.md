@@ -75,6 +75,7 @@ La arquitectura sigue el patrón **Separación de Responsabilidades** en capas c
 - **Separación servicio/cliente HTTP:** El `GeocodingService` y `ForecastService` orquestan la lógica de negocio (validación, parseo, manejo de errores); los clientes HTTP solo se encargan de la comunicación de red. Esto facilita el testing con mocks.
 - **Herramienta de build:** Vite (solo dev server y build) + Vitest. No es un framework de UI; se justifica porque el navegador no ejecuta TypeScript y evita mantener un paso `tsc` + servidor aparte. Entorno de pruebas: `jsdom`.
 - **Constantes configurables:** `src/config.ts` exporta `API_TIMEOUT_MS = 10_000`, `GEOCODING_BASE_URL` y `FORECAST_BASE_URL`; ningún cliente las hardcodea.
+- **Composition root separado del punto de entrada:** `src/app.ts` crea y cablea las cuatro capas y devuelve la instancia de `WeatherController`; `src/main.ts` solo resuelve los contenedores declarados en `index.html` y llama a `createApp`. Así la prueba de extremo a extremo monta exactamente la misma aplicación que el navegador.
 - **Errores tipados en los clientes:** los clientes lanzan `TimeoutError` (timeout) o `NetworkError` (cualquier otro fallo de `fetch`), definidos en `src/types`. El servicio los distingue con `instanceof`, nunca por el mensaje.
 - **Render seguro:** los componentes usan `textContent` para cualquier dato externo (nombre de ciudad); `innerHTML` queda prohibido con datos de la API.
 - **Timeout de 10 segundos:** Implementado con `AbortController` y `setTimeout` en ambos clientes HTTP, conforme al Requisito 2.4 y 3.3.
@@ -521,28 +522,50 @@ Las pruebas van junto al código. Las de propiedad se separan con el sufijo `.pr
 ```
 src/
 ├── config.ts
-├── WeatherController.test.ts            # ejemplo + P13
+├── app.ts                          # composition root: crea y cablea las capas
+├── main.ts                         # punto de entrada: resuelve los contenedores del DOM
+├── WeatherController.ts
+├── WeatherController.test.ts       # ejemplos (flujo, errores, foco, token)
+├── WeatherController.prop.test.ts  # P13
 ├── clients/
-│   ├── GeocodingClient.test.ts          # timeout, errores tipados
-│   ├── GeocodingClient.prop.test.ts     # P3
+│   ├── GeocodingClient.ts
+│   ├── GeocodingClient.test.ts     # timeout, errores tipados
+│   ├── GeocodingClient.prop.test.ts # P3
+│   ├── ForecastClient.ts
 │   ├── ForecastClient.test.ts
-│   └── ForecastClient.prop.test.ts      # P6
+│   ├── ForecastClient.prop.test.ts  # P6
+│   └── request.ts                  # timeout con AbortController + errores tipados
 ├── services/
+│   ├── GeocodingService.ts
 │   ├── GeocodingService.test.ts
-│   ├── GeocodingService.prop.test.ts    # P4, P5, P8
+│   ├── GeocodingService.prop.test.ts # P4, P5, P8
+│   ├── ForecastService.ts
 │   ├── ForecastService.test.ts
-│   └── ForecastService.prop.test.ts     # P7, P8, P9, P10
+│   └── ForecastService.prop.test.ts  # P7, P8, P9, P10
 ├── utils/
-│   ├── formatters.test.ts
-│   ├── formatters.prop.test.ts          # P11
-│   └── errorMessages.test.ts            # catálogo exacto + identidad del servicio
+│   ├── formatters.ts
+│   ├── formatters.prop.test.ts     # P11
+│   ├── errorMessages.ts            # catálogo exacto + identidad del servicio
+│   ├── errorMessages.test.ts
+│   └── guards.ts                   # isRecord / isFiniteNumber
 └── components/
+    ├── CitySearchForm.ts
     ├── CitySearchForm.test.ts
-    ├── CitySearchForm.prop.test.ts      # P1, P2 (tramo a)
-    ├── WeatherDisplay.test.ts           # fallback, clear, XSS
-    ├── WeatherDisplay.prop.test.ts      # P12
+    ├── CitySearchForm.prop.test.ts # P1, P2 (tramo a)
+    ├── WeatherDisplay.ts
+    ├── WeatherDisplay.test.ts      # fallback, clear, XSS
+    ├── WeatherDisplay.prop.test.ts # P12
+    ├── LoadingIndicator.ts
     ├── LoadingIndicator.test.ts
+    ├── ErrorMessage.ts
     └── ErrorMessage.test.ts
 tests/
-└── evals/                               # manifest, fixtures, contratos y escenarios (e2e)
+└── evals/                          # manifest, fixtures, props, contratos y escenarios (e2e)
+    ├── evals.manifest.ts           # un eval por criterio de aceptación y por propiedad
+    ├── fixtures.ts                 # respuestas reales de la API
+    ├── props.ts                    # seed y numRuns deterministas de fast-check
+    ├── manifest.eval.test.ts       # cobertura eval ↔ requirements.md ↔ design.md
+    ├── contracts.eval.test.ts      # URLs, constantes y taxonomía de errores
+    ├── a11y.eval.test.ts           # label, aria-live, foco y contraste WCAG
+    └── scenarios.e2e.test.ts       # flujos completos de extremo a extremo
 ```

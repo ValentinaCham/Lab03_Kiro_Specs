@@ -13,6 +13,9 @@ import { isFiniteNumber, isRecord } from '../utils/guards';
 
 export type ForecastClientPort = Pick<ForecastClient, 'getForecast'>;
 
+/** Superficie que el controlador necesita del servicio de pronóstico. */
+export type ForecastServicePort = Pick<ForecastService, 'getForecast'>;
+
 export class ForecastService {
   constructor(private readonly client: ForecastClientPort = new ForecastClient()) {}
 

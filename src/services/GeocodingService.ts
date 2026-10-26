@@ -13,6 +13,9 @@ import { isFiniteNumber, isRecord } from '../utils/guards';
 
 export type GeocodingClientPort = Pick<GeocodingClient, 'search'>;
 
+/** Superficie que el controlador necesita del servicio de geocodificación. */
+export type GeocodingServicePort = Pick<GeocodingService, 'geocode'>;
+
 const LATITUDE_MIN = -90;
 const LATITUDE_MAX = 90;
 const LONGITUDE_MIN = -180;

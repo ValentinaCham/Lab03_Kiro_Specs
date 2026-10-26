@@ -3,10 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Consulta el pronóstico del clima actual de cualquier ciudad con las APIs de Open-Meteo."
+    />
     <title>Pronóstico del clima</title>
+    <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
-    <main></main>
+    <main class="app">
+      <header class="app-header">
+        <h1 class="app-title">Pronóstico del clima</h1>
+        <p class="app-subtitle">
+          Escribe el nombre de una ciudad para ver su temperatura, humedad y precipitación actuales.
+        </p>
+      </header>
+
+      <section id="search-container" aria-label="Búsqueda de ciudad"></section>
+      <section id="loading-container" aria-label="Estado de la consulta"></section>
+      <section id="error-container" aria-label="Mensajes de error"></section>
+      <section id="weather-container" aria-label="Resultado del clima"></section>
+    </main>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
