@@ -42,7 +42,7 @@
 | BR-GEO-05 | Si `results` está ausente o vacío → error `CITY_NOT_FOUND`. | Req. 2.3 | TDD | Bloqueante |
 | BR-GEO-06 | Si `latitude` o `longitude` del primer resultado falta, es `null` o no es numérico → error `CITY_NOT_FOUND` (se trata como cero resultados válidos). | Req. 2.6 | TDD + EDD (P5) | Bloqueante |
 | BR-GEO-07 | Ante error de red o timeout → error de red (`NETWORK_ERROR` / `TIMEOUT`) con mensaje propio del servicio de geocodificación. | Req. 2.4 | TDD | Bloqueante |
-| BR-GEO-08 | Un estado HTTP no-2xx DEBE tratarse como fallo e informar **qué servicio** falló. | Req. 3.4, 5.4 | TDD + EDD (P8) | Bloqueante |
+| BR-GEO-08 | Un estado HTTP no-2xx DEBE tratarse como fallo e informar **qué servicio** falló. | Req. 2.7, 5.4 | TDD + EDD (P8) | Bloqueante |
 | BR-GEO-09 | Un 2xx con cuerpo no parseable → error `INVALID_RESPONSE`. | Req. 5.5 | TDD + EDD (P9) | Bloqueante |
 
 ---
@@ -53,7 +53,7 @@
 |----|-------|--------|--------------|------|
 | BR-FCT-01 | La solicitud DEBE incluir `latitude`, `longitude` y `current=temperature_2m,relative_humidity_2m,precipitation`. | Req. 3.1 | EDD (P6, contrato) | Bloqueante |
 | BR-FCT-02 | La URL base DEBE ser `https://api.open-meteo.com/v1/forecast`. | Req. 3.1 | EDD (contrato) | Bloqueante |
-| BR-FCT-03 | Solo se consulta el pronóstico si las coordenadas son válidas: latitud ∈ [-90, 90] y longitud ∈ [-180, 180]. | Req. 3.1 | TDD + EDD (P6) | Bloqueante |
+| BR-FCT-03 | Solo se consulta el pronóstico si las coordenadas son válidas: latitud ∈ [-90, 90] y longitud ∈ [-180, 180]. Fuera de rango → `CITY_NOT_FOUND` y **no** se pide el pronóstico (la validación vive en `GeocodingService`). | Req. 3.1, 3.6 | TDD + EDD (P6) | Bloqueante |
 | BR-FCT-04 | Ante respuesta exitosa, los tres valores (`temperature_2m`, `relative_humidity_2m`, `precipitation`) se extraen **sin transformación** y quedan disponibles para render. | Req. 3.2, 5.2 | EDD (P7, round-trip) | Bloqueante |
 | BR-FCT-05 | Si cualquiera de los tres campos falta, es `null` o no es numérico → error `INCOMPLETE_DATA`. | Req. 3.5 | TDD + EDD (P10) | Bloqueante |
 | BR-FCT-06 | Ante error de red o timeout → error propio del servicio de pronóstico. | Req. 3.3 | TDD | Bloqueante |
@@ -79,13 +79,15 @@
 | ID | Regla | Origen | Verificación | Sev. |
 |----|-------|--------|--------------|------|
 | BR-UI-01 | Mientras haya una solicitud en curso DEBE mostrarse un indicador de carga. | Req. 1.5, 4.5 | TDD | Bloqueante |
-| BR-UI-02 | El indicador de carga DEBE ocultarse al recibir respuesta **o** error. | Req. 4.5 | TDD | Bloqueante |
+| BR-UI-02 | El indicador de carga DEBE ocultarse cuando la búsqueda termine, con datos **o** con error de **cualquiera** de los dos servicios. | Req. 4.5 | TDD | Bloqueante |
 | BR-UI-03 | Al iniciar una nueva búsqueda, el contenido previo del `Weather_Display` DEBE limpiarse **antes** de emitir la nueva solicitud. | Req. 4.6 | TDD + EDD (P13) | Bloqueante |
 | BR-UI-04 | El estado de error previo también DEBE limpiarse al iniciar una nueva búsqueda. | `design.md` §Error Handling 6 | TDD | Importante |
-| BR-UI-05 | Si la API no devuelve nombre de ciudad (ausente o vacío), el `Weather_Display` DEBE mostrar el nombre **ingresado por el usuario**. | Req. 4.7 | TDD | Bloqueante |
-| BR-UI-06 | Ante cualquier error, `City_Input` DEBE permanecer habilitado y accesible para permitir el reintento. | Req. 1.6 | TDD | Bloqueante |
+| BR-UI-05 | Si la API no devuelve nombre de ciudad (ausente, vacío o solo espacios), el `Weather_Display` DEBE mostrar el nombre **ingresado por el usuario**. | Req. 4.7 | TDD | Bloqueante |
+| BR-UI-06 | Ante cualquier error, `City_Input` DEBE permanecer habilitado y accesible, y recibir el foco, para permitir el reintento. | Req. 1.6 | TDD | Bloqueante |
 | BR-UI-07 | El flujo es secuencial: **primero** geocodificación, **luego** pronóstico. El pronóstico no se pide si la geocodificación falla. | `design.md` §Overview | TDD | Bloqueante |
-| BR-UI-08 | La UI debe ser accesible: `<label>` asociado al campo, foco visible, contraste suficiente y región `aria-live` para carga y error. | tasks 11.2 | Manual | Importante |
+| BR-UI-08 | La UI debe ser accesible: `<label>` asociado al campo, foco visible, contraste ≥ 4.5:1 y región `aria-live` para carga y error. | Req. 6.1–6.4 | Manual + TDD (atributos del DOM) | Importante |
+| BR-UI-09 | Si se inicia una búsqueda mientras otra sigue en curso, la respuesta de la anterior se **descarta** (token de petición); solo la más reciente actualiza la UI. | Req. 4.8 | TDD | Bloqueante |
+| BR-UI-10 | El texto de validación se limpia al iniciar una búsqueda válida o al editar el campo; la validación ocurre **solo** en `CitySearchForm`, no en el controlador. | Req. 1.3, 1.4 | TDD | Menor |
 
 ---
 
@@ -99,6 +101,9 @@
 | BR-ERR-04 | Un 2xx con cuerpo que no se puede parsear al objeto esperado se trata como **fallo**, nunca como éxito parcial. | Req. 5.5 | TDD + EDD (P9) | Bloqueante |
 | BR-ERR-05 | Los clientes HTTP no interpretan el cuerpo de la respuesta: solo construyen la URL, aplican el timeout y devuelven la `Response` o lanzan. | `design.md` §Architecture | Manual / Review | Importante |
 | BR-ERR-06 | El JSON se parsea dentro de `try/catch`; un fallo de parseo produce `INVALID_RESPONSE`. | `design.md` §Error Handling 4 | TDD | Bloqueante |
+| BR-ERR-07 | Los clientes lanzan errores **tipados** (`TimeoutError` para el timeout, `NetworkError` para el resto); los servicios los distinguen por tipo, nunca por el mensaje. | `design.md` §Clientes HTTP | TDD | Bloqueante |
+| BR-ERR-08 | El timeout se prueba con `vi.useFakeTimers`: aborta a los 10 000 ms exactos (no a 9 999) y se cancela con `clearTimeout` al recibir la respuesta. | Req. 2.4, 3.3 | TDD | Bloqueante |
+| BR-SEC-01 | Todo texto proveniente de una API externa (nombre de ciudad) se renderiza con `textContent`; **prohibido** `innerHTML` con datos externos. | Req. 6.5 | TDD | Bloqueante |
 
 ---
 
@@ -112,7 +117,7 @@ Dos niveles: el **error de dominio** (tipo del servicio) y el **mensaje visible*
 | `CITY_NOT_FOUND` | Geocoding | `CITY_NOT_FOUND` | "No se encontró la ciudad ingresada. Verifica el nombre e intenta de nuevo." | Req. 2.3, 2.6 |
 | `NETWORK_ERROR` | Geocoding | `GEOCODING_NETWORK_ERROR` | "El servicio de geocodificación no está disponible. Verifica tu conexión." | Req. 2.4 |
 | `TIMEOUT` | Geocoding | `GEOCODING_TIMEOUT` | "El servicio de geocodificación no respondió a tiempo." | Req. 2.4 |
-| `SERVICE_ERROR` | Geocoding | `GEOCODING_SERVICE_ERROR` | "El servicio de geocodificación retornó un error." | Req. 3.4, 5.4 |
+| `SERVICE_ERROR` | Geocoding | `GEOCODING_SERVICE_ERROR` | "El servicio de geocodificación retornó un error." | Req. 2.7, 5.4 |
 | `INVALID_RESPONSE` | Geocoding | `GEOCODING_INVALID_RESPONSE` | "Los datos recibidos del servicio de geocodificación no son válidos." | Req. 5.5 |
 | `NETWORK_ERROR` | Forecast | `FORECAST_NETWORK_ERROR` | "El servicio de pronóstico no está disponible. Verifica tu conexión." | Req. 3.3 |
 | `TIMEOUT` | Forecast | `FORECAST_TIMEOUT` | "El servicio de pronóstico no respondió a tiempo." | Req. 3.3 |
@@ -121,6 +126,8 @@ Dos niveles: el **error de dominio** (tipo del servicio) y el **mensaje visible*
 | `INVALID_RESPONSE` | Forecast | `FORECAST_INVALID_RESPONSE` | "Los datos recibidos del servicio de pronóstico no son válidos." | Req. 5.5 |
 
 `SERVICE_ERROR` transporta además el `statusCode` original (rango esperado: 300–599).
+
+> **Quién traduce:** el mapeo *error de dominio + servicio → identificador UI → mensaje* vive en `src/utils/errorMessages.ts` (tarea 7.3). `ErrorMessage` solo pinta el string; el controlador consulta el mapeo. Como `SERVICE_ERROR` es idéntico en ambos servicios, la identidad del servicio que falló se resuelve **aquí**, no en el servicio.
 
 ---
 
@@ -144,7 +151,8 @@ Estas afirmaciones DEBEN ser verdaderas en **todo** momento de la ejecución, in
 | INV-12 | El `Weather_Display` renderizado contiene siempre nombre de ciudad + los tres valores con su unidad. | Req. 4.1–4.4 | P12 |
 | INV-13 | El `Weather_Display` está vacío mientras una nueva búsqueda está en curso. | Req. 4.6 | P13 |
 | INV-14 | Ningún camino de error deja el `City_Input` deshabilitado o inaccesible. | Req. 1.6 | P-escenario |
-| INV-15 | Ningún camino de error deja el indicador de carga visible. | Req. 4.5 | P-escenario |
+| INV-15 | Ningún camino de error —de geocodificación **o** de pronóstico— deja el indicador de carga visible. | Req. 4.5 | P-escenario |
+| INV-16 | Una respuesta de una búsqueda anterior nunca modifica la UI después de iniciada una más reciente. | Req. 4.8 | P-escenario |
 
 ---
 
@@ -163,10 +171,10 @@ Regla → requisito → propiedad → tarea de `tasks.md` → verificación.
 | BR-GEO-05 | 2.3 | — | 4.1, 4.5 |
 | BR-GEO-06 | 2.6 | P5 | 4.1, 4.3 |
 | BR-GEO-07 | 2.4 | — | 4.5 |
-| BR-GEO-08 | 3.4, 5.4 | P8 | 4.4, 5.4 |
+| BR-GEO-08 | 2.7, 5.4 | P8 | 4.4, 5.4 |
 | BR-GEO-09 | 5.5 | P9 | 4.1 |
 | BR-FCT-01 / 02 | 3.1 | P6 | 3.3, 3.4 |
-| BR-FCT-03 | 3.1 | P6 | 3.3, 3.4 |
+| BR-FCT-03 | 3.1, 3.6 | P6 | 3.3, 3.4, 4.1, 4.6 |
 | BR-FCT-04 | 3.2, 5.2 | P7 | 5.1, 5.2 |
 | BR-FCT-05 | 3.5 | P10 | 5.1, 5.3 |
 | BR-FCT-06 | 3.3 | — | 5.6 |
@@ -177,19 +185,24 @@ Regla → requisito → propiedad → tarea de `tasks.md` → verificación.
 | BR-FMT-03 | 4.3, 5.3 | P11 | 7.1, 7.2 |
 | BR-FMT-04 | 4.4, 5.3 | P11 | 7.1, 7.2 |
 | BR-FMT-05 | 4.1–4.4 | P12 | 8.5, 8.6 |
-| BR-UI-01 / 02 | 1.5, 4.5 | — | 8.7, 9.1, 9.3 |
+| BR-UI-01 / 02 | 1.5, 4.5 | — | 8.7, 8.9, 9.1, 9.3, 9.4 |
 | BR-UI-03 | 4.6 | P13 | 8.5, 9.2 |
-| BR-UI-04 | design §Err.6 | — | 9.1 |
-| BR-UI-05 | 4.7 | — | 8.5 |
-| BR-UI-06 | 1.6 | — | 8.4, 9.3, 11.3 |
-| BR-UI-07 | design §Overview | — | 9.1 |
-| BR-UI-08 | design §11.2 (tareas 11.2) | — | 11.2 |
+| BR-UI-04 | design §Err.6 | — | 9.1, 9.4 |
+| BR-UI-05 | 4.7 | — | 8.5, 8.9 |
+| BR-UI-06 | 1.6 | — | 8.4, 9.3, 9.4, 11.3 |
+| BR-UI-07 | design §Overview | — | 9.1, 9.4 |
+| BR-UI-08 | 6.1–6.4 | — | 8.1, 11.2, 11.5 |
+| BR-UI-09 | 4.8 | — | 9.1, 9.4 |
+| BR-UI-10 | 1.3, 1.4 | — | 8.1, 8.4 |
 | BR-ERR-01 | 2.4, 3.3 | — | 3.1, 3.3, 4.5, 5.6 |
 | BR-ERR-02 | 2.4, 3.3 | — | 4.5, 5.6 |
 | BR-ERR-03 | 2.5 | P1 | 8.1, 8.2 |
 | BR-ERR-04 | 5.5 | P9 | 5.5 |
 | BR-ERR-05 | design §Architecture | — | 3.1, 3.3 |
 | BR-ERR-06 | design §Err.4 | — | 4.1, 5.1 |
+| BR-ERR-07 | design §Clientes HTTP | — | 3.1, 3.3, 3.5 |
+| BR-ERR-08 | 2.4, 3.3 | — | 3.5 |
+| BR-SEC-01 | 6.5 | — | 8.5, 8.9 |
 
 ---
 
@@ -206,8 +219,13 @@ Regla → requisito → propiedad → tarea de `tasks.md` → verificación.
 | Humedad con decimales | Se redondea con `Math.round` al presentar. | Req. 5.3 |
 | `0` o `0.0` en precipitación | Válido → `0.0 mm`. | Req. 4.4 |
 | Búsqueda con el mismo nombre repetida | Se ejecuta el flujo completo de nuevo (limpia display y error antes). | Req. 4.6 |
-| El usuario escribe la ciudad mientras hay una búsqueda en curso | La nueva búsqueda cancela la vista anterior: limpia y vuelve a empezar. | Req. 4.6 |
-| Nombre de parámetro de humedad | **`relative_humidity_2m`** (API actual), no el legacy `relativehumidity_2m`. | D1 |
+| El usuario envía otra ciudad mientras hay una búsqueda en curso | Se limpia y se vuelve a empezar; la respuesta de la anterior se descarta con un token de petición (no se deshabilita `City_Input`). | Req. 4.6, 4.8 |
+| Latitud/longitud fuera de rango en la respuesta de geocodificación | `CITY_NOT_FOUND`; no se pide el pronóstico. Sin error de dominio nuevo. | Req. 3.6 |
+| `name` con solo espacios | Cuenta como ausente: se usa el fallback al nombre del usuario. | Req. 4.7 |
+| Nombre de ciudad con marcado HTML (`<b>`, `<script>`) | Se muestra literal como texto. | Req. 6.5 |
+| Codificación de espacios en la URL | `+` (de `URLSearchParams`) y `%20` son equivalentes: las pruebas **decodifican** la URL, no comparan cadenas. | Req. 2.1 |
+| Generadores de fast-check para números | Solo finitos (`noNaN`, `noDefaultInfinity`): `NaN`/`Infinity` no sobreviven al JSON. Sin valores ≥ 1e21 (notación exponencial en `toFixed`). | Req. 5.2, 5.3 |
+| Nombre de parámetro de humedad | **`relative_humidity_2m`** (API actual). `requirements.md` ya fue corregido (v1.1). | D1 |
 | Aplicación de `trim()` | Solo al enviar; no se modifica el texto que el usuario ve mientras escribe. | Req. 1.5 |
 | Timeout | 10 000 ms exactos, por solicitud, mediante `AbortController` + `setTimeout`. | Req. 2.4, 3.3 |
 
@@ -235,3 +253,4 @@ Estas reglas gobiernan **cómo** se comprueba el cumplimiento de las anteriores.
 | Fecha | Cambio | Razón |
 |-------|--------|-------|
 | v1.0 | Creación del catálogo a partir de `requirements.md`, `design.md` y `tasks.md` | Base normativa del flujo Spec-Driven + TDD/EDD |
+| v1.1 | Nuevas reglas BR-UI-09, BR-UI-10, BR-ERR-07, BR-ERR-08, BR-SEC-01 e INV-16; orígenes corregidos de BR-GEO-08, BR-FCT-03, BR-UI-08; casos borde ampliados; D1 cerrado en `requirements.md` | Revisión de la planificación (hallazgos A1, A5, A8, A9, A12, A13, A16) |
