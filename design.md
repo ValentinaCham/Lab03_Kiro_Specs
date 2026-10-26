@@ -17,23 +17,26 @@ La aplicación es una Single Page Application (SPA) estática, sin backend propi
 ```mermaid
 sequenceDiagram
     actor Usuario
-    participant UI as Interfaz de Usuario
+    participant UI as CitySearchForm
+    participant Ctrl as WeatherController
     participant GeoService as GeocodingService
     participant ForecastService as ForecastService
     participant GeoAPI as Geocoding API (Open-Meteo)
     participant ForecastAPI as Forecast API (Open-Meteo)
 
     Usuario->>UI: Escribe nombre de ciudad y envía
-    UI->>UI: Valida entrada (no vacía/whitespace)
-    UI->>GeoService: geocode(cityName.trim())
+    UI->>UI: Valida entrada (no vacía/whitespace) — única validación
+    UI->>Ctrl: onSearch(cityName.trim())
+    Ctrl->>Ctrl: Nuevo token de petición, limpia estado, muestra carga
+    Ctrl->>GeoService: geocode(cityName)
     GeoService->>GeoAPI: GET /v1/search?name=...&count=1
     GeoAPI-->>GeoService: { results: [...] }
-    GeoService-->>UI: Coordinates | Error
-    UI->>ForecastService: getForecast(lat, lon)
+    GeoService-->>Ctrl: Coordinates | Error
+    Ctrl->>ForecastService: getForecast(lat, lon)
     ForecastService->>ForecastAPI: GET /v1/forecast?latitude=...&longitude=...&current=...
     ForecastAPI-->>ForecastService: { current: {...} }
-    ForecastService-->>UI: WeatherData | Error
-    UI->>Usuario: Muestra datos del clima
+    ForecastService-->>Ctrl: WeatherData | Error
+    Ctrl->>Usuario: Si el token sigue vigente, muestra datos o error; oculta carga
 ```
 
 ---
@@ -70,6 +73,10 @@ La arquitectura sigue el patrón **Separación de Responsabilidades** en capas c
 - **Sin framework pesado:** La app usa HTML, CSS y JavaScript/TypeScript vanilla para mantener el bundle mínimo y evitar dependencias innecesarias. Se puede adoptar un framework ligero (React, Svelte) sin cambiar las capas de servicio.
 - **Sin backend propio:** Las APIs de Open-Meteo son gratuitas, no requieren API key y soportan CORS, por lo que las llamadas se hacen directamente desde el browser.
 - **Separación servicio/cliente HTTP:** El `GeocodingService` y `ForecastService` orquestan la lógica de negocio (validación, parseo, manejo de errores); los clientes HTTP solo se encargan de la comunicación de red. Esto facilita el testing con mocks.
+- **Herramienta de build:** Vite (solo dev server y build) + Vitest. No es un framework de UI; se justifica porque el navegador no ejecuta TypeScript y evita mantener un paso `tsc` + servidor aparte. Entorno de pruebas: `jsdom`.
+- **Constantes configurables:** `src/config.ts` exporta `API_TIMEOUT_MS = 10_000`, `GEOCODING_BASE_URL` y `FORECAST_BASE_URL`; ningún cliente las hardcodea.
+- **Errores tipados en los clientes:** los clientes lanzan `TimeoutError` (timeout) o `NetworkError` (cualquier otro fallo de `fetch`), definidos en `src/types`. El servicio los distingue con `instanceof`, nunca por el mensaje.
+- **Render seguro:** los componentes usan `textContent` para cualquier dato externo (nombre de ciudad); `innerHTML` queda prohibido con datos de la API.
 - **Timeout de 10 segundos:** Implementado con `AbortController` y `setTimeout` en ambos clientes HTTP, conforme al Requisito 2.4 y 3.3.
 
 ---
@@ -82,20 +89,22 @@ La arquitectura sigue el patrón **Separación de Responsabilidades** en capas c
 - Renderiza el campo `City_Input` con `maxlength="100"`.
 - Renderiza el botón de envío.
 - Maneja el evento `submit` del formulario y el evento `keydown` para la tecla Enter.
-- Muestra mensajes de validación inline cuando la entrada está vacía o es solo whitespace.
-- Emite un evento `search(cityName: string)` hacia el controlador.
+- Muestra mensajes de validación inline cuando la entrada está vacía o es solo whitespace; es el **único** sitio que valida. El mensaje se limpia al editar el campo o al enviar una búsqueda válida.
+- Asocia un `<label>` al campo y expone el mensaje de validación en una región `aria-live`.
+- Emite un callback `onSearch(cityName: string)` con el valor recortado y expone `focus()` para devolverle el foco tras un error.
 
 #### `WeatherDisplay`
 - Renderiza los datos del clima: nombre de ciudad, temperatura (°C), humedad (%) y precipitación (mm).
 - Aplica el formateo numérico: temperatura y precipitación a máximo 1 decimal; humedad como entero.
 - Se limpia al inicio de cada nueva búsqueda.
-- Muestra el nombre ingresado por el usuario como fallback si la Geocoding API no retorna un nombre.
+- Firma: `render(weather: WeatherData, apiCityName: string | undefined, typedCityName: string)`. Usa `typedCityName` como fallback si `apiCityName` está ausente, vacío o es solo espacios.
+- Escribe todo con `textContent` (BR-SEC-01).
 
 #### `LoadingIndicator`
-- Componente simple que se muestra/oculta según el estado de la solicitud en curso.
+- Componente simple con `show()` / `hide()`; su contenedor es una región `aria-live`.
 
 #### `ErrorMessage`
-- Muestra mensajes de error descriptivos según el tipo de fallo (validación, ciudad no encontrada, servicio no disponible, datos incompletos).
+- Solo pinta un string en una región `aria-live` (`show(message)` / `clear()`). No decide el texto: el mapeo *error de dominio + servicio → mensaje* vive en `src/utils/errorMessages.ts`, expuesto como `getErrorMessage(service: 'geocoding' | 'forecast', error): string` (catálogo de `BUSSINESS_RULES.md` §7).
 
 ### Servicios
 
@@ -105,7 +114,7 @@ La arquitectura sigue el patrón **Separación de Responsabilidades** en capas c
 interface Coordinates {
   latitude: number;
   longitude: number;
-  cityName: string; // nombre retornado por la Geocoding API
+  cityName?: string; // nombre retornado por la Geocoding API; puede faltar (BR-UI-05)
 }
 
 type GeocodingResult = 
@@ -150,9 +159,11 @@ interface ForecastService {
 ```
 
 #### `WeatherController`
-- Orquesta el flujo completo: valida la entrada, llama a `GeocodingService`, luego a `ForecastService`, y actualiza el estado de la UI.
-- Gestiona el estado de carga (`isLoading`), errores y datos del clima.
-- Limpia el `WeatherDisplay` al iniciar cada nueva búsqueda.
+- Orquesta el flujo completo: recibe `cityName` ya validado y recortado, llama a `GeocodingService`, luego a `ForecastService`, y actualiza la UI. **No** valida la entrada (BR-UI-10).
+- Mantiene un `AppState` (`idle | loading | success | error`) y deriva de él lo que se pinta.
+- Cada búsqueda incrementa un **token de petición**; tras cada `await` compara el token y, si ya no es el vigente, descarta el resultado (Req. 4.8, BR-UI-09). `City_Input` no se deshabilita.
+- Limpia `WeatherDisplay` y `ErrorMessage` **antes** de emitir la primera solicitud de cada búsqueda.
+- Oculta `LoadingIndicator` y devuelve el foco a `City_Input` ante cualquier terminación (éxito o error de cualquiera de los dos servicios).
 
 ---
 
@@ -180,7 +191,8 @@ La API retorna un objeto JSON con la siguiente estructura:
 
 - Si no hay resultados, el campo `results` puede estar ausente o ser un array vacío.
 - Los campos vacíos no son retornados por la API (ej. `admin4` se omite si no hay cuarto nivel administrativo).
-- Si `latitude` o `longitude` están ausentes en el primer resultado, se trata como "ciudad no encontrada".
+- Si `latitude` o `longitude` están ausentes, no son numéricas finitas o están fuera de rango (lat ∈ [-90, 90], lon ∈ [-180, 180]) en el primer resultado, se trata como "ciudad no encontrada" (Req. 2.6, 3.6).
+- Los fixtures de prueba usan valores reales de la API (con `language=en` por defecto el `country` de Berlín es `Germany`).
 
 **Mapeo a `Coordinates`:**
 
@@ -188,7 +200,7 @@ La API retorna un objeto JSON con la siguiente estructura:
 |-------------------------|------------------|------------------------|
 | `results[0].latitude`   | `latitude`       | Sin modificación       |
 | `results[0].longitude`  | `longitude`      | Sin modificación       |
-| `results[0].name`       | `cityName`       | Sin modificación       |
+| `results[0].name`       | `cityName`       | Sin modificación (opcional) |
 
 ### Respuesta de la Forecast API
 
@@ -276,7 +288,7 @@ type AppState =
 
 ### Property 2: Trim del nombre de ciudad antes de enviar
 
-*Para cualquier* string de nombre de ciudad que contenga espacios al inicio o al final (pero que tenga al menos un carácter no-whitespace), el valor enviado como parámetro `name` a la Geocoding API DEBERÁ ser igual al resultado de aplicar `trim()` al valor ingresado por el usuario.
+*Para cualquier* string de nombre de ciudad que contenga espacios al inicio o al final (pero que tenga al menos un carácter no-whitespace), el valor enviado como parámetro `name` a la Geocoding API DEBERÁ ser igual al resultado de aplicar `trim()` al valor ingresado por el usuario. Se verifica en dos tramos: (a) `CitySearchForm` entrega el valor recortado a `onSearch`; (b) `WeatherController` + `GeocodingService` + `GeocodingClient` (con `fetch` mockeado) construyen una URL cuyo `name` decodificado es ese mismo valor.
 
 **Validates: Requirements 1.5**
 
@@ -284,7 +296,7 @@ type AppState =
 
 ### Property 3: Construcción correcta de la URL de Geocodificación
 
-*Para cualquier* nombre de ciudad no vacío, la URL construida para la solicitud a la Geocoding API DEBERÁ contener el nombre URL-encoded como parámetro `name` y el parámetro `count=1`.
+*Para cualquier* nombre de ciudad no vacío, la URL construida para la solicitud a la Geocoding API DEBERÁ contener el nombre URL-encoded como parámetro `name` y el parámetro `count=1`. La prueba **decodifica** la URL (`new URL(...).searchParams`) y compara el valor; no compara cadenas, porque `+` y `%20` son equivalentes.
 
 **Validates: Requirements 2.1**
 
@@ -292,7 +304,7 @@ type AppState =
 
 ### Property 4: Extracción de coordenadas del primer resultado
 
-*Para cualquier* respuesta válida de la Geocoding API que contenga uno o más resultados con `latitude` y `longitude` presentes, las coordenadas extraídas DEBERÁN ser numéricamente iguales a los valores `latitude` y `longitude` del primer elemento del array `results`, sin ninguna transformación.
+*Para cualquier* respuesta válida de la Geocoding API que contenga uno o más resultados con `latitude` y `longitude` presentes, las coordenadas extraídas DEBERÁN ser numéricamente iguales a los valores `latitude` y `longitude` del primer elemento del array `results`, sin ninguna transformación. *Generadores:* latitud ∈ [-90, 90] y longitud ∈ [-180, 180], finitos (`noNaN`, `noDefaultInfinity`).
 
 **Validates: Requirements 2.2, 5.1**
 
@@ -300,7 +312,7 @@ type AppState =
 
 ### Property 5: Validación de campos de coordenadas faltantes
 
-*Para cualquier* resultado de la Geocoding API donde el campo `latitude` o el campo `longitude` (o ambos) sea `null`, `undefined` o esté ausente, la extracción de coordenadas DEBERÁ producir un resultado inválido que sea tratado como "ciudad no encontrada".
+*Para cualquier* resultado de la Geocoding API donde el campo `latitude` o el campo `longitude` (o ambos) sea `null`, `undefined`, no numérico, esté ausente o fuera de rango, la extracción de coordenadas DEBERÁ producir un resultado inválido que sea tratado como "ciudad no encontrada". *Generadores:* cada campo se genera de forma **independiente** (uno inválido y el otro válido, o ambos inválidos).
 
 **Validates: Requirements 2.6**
 
@@ -316,7 +328,7 @@ type AppState =
 
 ### Property 7: Round-trip de parseo de la respuesta Forecast → WeatherData
 
-*Para cualquier* respuesta JSON válida de la Forecast API que contenga los campos `current.temperature_2m`, `current.relative_humidity_2m` y `current.precipitation` con valores numéricos, los valores almacenados en el objeto `WeatherData` interno DEBERÁN ser numéricamente iguales a los valores del JSON crudo, sin ninguna transformación antes del almacenamiento.
+*Para cualquier* respuesta JSON válida de la Forecast API que contenga los campos `current.temperature_2m`, `current.relative_humidity_2m` y `current.precipitation` con valores numéricos finitos (generadores `noNaN`, `noDefaultInfinity`, rangos realistas), los valores almacenados en el objeto `WeatherData` interno DEBERÁN ser numéricamente iguales a los valores del JSON crudo, sin ninguna transformación antes del almacenamiento.
 
 **Validates: Requirements 3.2, 5.2**
 
@@ -324,7 +336,7 @@ type AppState =
 
 ### Property 8: Respuestas HTTP no-2xx siempre generan error
 
-*Para cualquier* código de estado HTTP en el rango [300–599] retornado por la Geocoding API o la Forecast API, la aplicación DEBERÁ tratar la respuesta como un fallo e indicar en el mensaje de error cuál servicio falló.
+*Para cualquier* código de estado HTTP en el rango [300–599] retornado por la Geocoding API o la Forecast API, la aplicación DEBERÁ tratar la respuesta como un fallo. Los servicios devuelven `SERVICE_ERROR` con el `statusCode`; la identidad del servicio que falló se verifica en `errorMessages.ts` (`getErrorMessage('geocoding' | 'forecast', error)`), donde se resuelve el mensaje correspondiente.
 
 **Validates: Requirements 3.4, 5.4**
 
@@ -348,7 +360,7 @@ type AppState =
 
 ### Property 11: Formateo numérico correcto de los valores del clima
 
-*Para cualquier* valor numérico de temperatura y precipitación, la representación formateada en la interfaz DEBERÁ tener como máximo 1 dígito decimal. *Para cualquier* valor numérico de humedad, la representación formateada DEBERÁ ser un número entero (sin decimales).
+*Para cualquier* valor numérico finito (|v| < 1e21) de temperatura y precipitación, la representación formateada en la interfaz DEBERÁ tener como máximo 1 dígito decimal. *Para cualquier* valor numérico de humedad, la representación formateada DEBERÁ ser un número entero (sin decimales).
 
 **Validates: Requirements 5.3**
 
@@ -364,7 +376,7 @@ type AppState =
 
 ### Property 13: Limpieza del Weather_Display al iniciar nueva búsqueda
 
-*Para cualquier* estado del `Weather_Display` que contenga datos de una búsqueda previa, al iniciar una nueva búsqueda, el contenido del `Weather_Display` DEBERÁ estar limpio antes de que llegue la respuesta de la nueva solicitud a la Forecast API.
+*Para cualquier* estado del `Weather_Display` que contenga datos de una búsqueda previa, al iniciar una nueva búsqueda, el contenido del `Weather_Display` DEBERÁ estar limpio **antes de emitir** la primera solicitud de la nueva búsqueda (se verifica el orden de llamadas: `clear()` precede a `GeocodingService.geocode`).
 
 **Validates: Requirements 4.6**
 
@@ -410,7 +422,7 @@ flowchart TD
     F -- Timeout --> H[Mostrar GEOCODING_TIMEOUT]
     F -- HTTP no-2xx --> I[Mostrar GEOCODING_SERVICE_ERROR]
     F -- JSON inválido --> J[Mostrar GEOCODING_INVALID_RESPONSE]
-    F -- 0 resultados o lat/lon ausente --> K[Mostrar CITY_NOT_FOUND]
+    F -- 0 resultados, lat/lon ausente o fuera de rango --> K[Mostrar CITY_NOT_FOUND]
     F -- Éxito --> L[Extraer Coordinates]
     L --> M[Llamar ForecastService.getForecast]
     M --> N{Resultado?}
@@ -468,16 +480,16 @@ Cada propiedad de corrección definida en este documento se implementa como una 
 | P1: Rechazo de whitespace | `fc.stringOf(fc.constantFrom(' ', '\t', '\n', '\r'))` | fast-check |
 | P2: Trim antes de enviar | Strings con whitespace en extremos + contenido válido | fast-check |
 | P3: URL de Geocodificación | Strings arbitrarios no vacíos | fast-check |
-| P4: Extracción de coordenadas | Objetos de respuesta con `latitude`/`longitude` numéricos | fast-check |
-| P5: Coordenadas faltantes | Objetos con `latitude`/`longitude` nulos o ausentes | fast-check |
+| P4: Extracción de coordenadas | Objetos con `latitude` ∈ [-90, 90] y `longitude` ∈ [-180, 180] finitos | fast-check |
+| P5: Coordenadas inválidas | Cada campo independiente: nulo, ausente, no numérico o fuera de rango | fast-check |
 | P6: URL de Forecast | Pares `(lat, lon)` ∈ [-90, 90] × [-180, 180] | fast-check |
 | P7: Round-trip parseo Forecast | Objetos de respuesta Forecast con valores numéricos | fast-check |
 | P8: HTTP no-2xx → error | Códigos de estado ∈ [300, 599] para ambas APIs | fast-check |
 | P9: 2xx con cuerpo inválido → error | Strings/objetos malformados o sin campos requeridos | fast-check |
 | P10: Campos nulos → incompletos | Combinaciones de campos nulos/ausentes en `current` | fast-check |
-| P11: Formateo numérico | Valores `number` arbitrarios (incluyendo decimales) | fast-check |
+| P11: Formateo numérico | `fc.double({ noNaN: true, noDefaultInfinity: true, min: -1e6, max: 1e6 })` | fast-check |
 | P12: Weather_Display contiene campos | Objetos `WeatherData` arbitrarios válidos | fast-check |
-| P13: Limpieza de display | Cualquier estado previo de `WeatherDisplay` | fast-check |
+| P13: Limpieza de display | Cualquier estado previo de `WeatherDisplay`; se verifica orden `clear()` → `geocode` | fast-check |
 
 #### Pruebas de Ejemplo (Unit Tests)
 
@@ -493,18 +505,44 @@ Cada propiedad de corrección definida en este documento se implementa como una 
 | Forecast API: timeout (mock 10s) | Ejemplo |
 | Indicador de carga aparece al iniciar y desaparece al completar | Ejemplo |
 | Fallback a nombre ingresado por usuario si cityName está vacío en respuesta | Ejemplo |
-| City_Input permanece accesible después de cualquier error | Ejemplo |
+| City_Input permanece accesible y recibe el foco después de cualquier error | Ejemplo |
+| Indicador de carga se oculta cuando falla la geocodificación (sin llamar a Forecast) | Ejemplo |
+| No se llama a ForecastService si la geocodificación falla (BR-UI-07) | Ejemplo |
+| Respuesta de una búsqueda anterior se descarta (BR-UI-09) | Ejemplo |
+| Coordenadas fuera de rango → ciudad no encontrada, sin pedir pronóstico | Ejemplo |
+| Timeout a los 10 000 ms exactos con fake timers y `clearTimeout` en éxito (BR-ERR-08) | Ejemplo |
+| Nombre de ciudad con HTML se muestra literal (BR-SEC-01) | Ejemplo |
+| Mapeo error → mensaje exacto del catálogo para los 11 casos | Ejemplo |
 
 ### Estructura de Archivos de Test
 
+Las pruebas van junto al código. Las de propiedad se separan con el sufijo `.prop.test.ts`; los evals (propiedad por referencia, contrato y escenario) se registran en `tests/evals/evals.manifest.ts` y `npm run eval` ejecuta tanto `tests/evals/` como los `*.prop.test.ts` registrados.
+
 ```
 src/
+├── config.ts
+├── WeatherController.test.ts            # ejemplo + P13
+├── clients/
+│   ├── GeocodingClient.test.ts          # timeout, errores tipados
+│   ├── GeocodingClient.prop.test.ts     # P3
+│   ├── ForecastClient.test.ts
+│   └── ForecastClient.prop.test.ts      # P6
 ├── services/
-│   ├── GeocodingService.test.ts     # Pruebas de servicio (unit + property)
-│   └── ForecastService.test.ts      # Pruebas de servicio (unit + property)
+│   ├── GeocodingService.test.ts
+│   ├── GeocodingService.prop.test.ts    # P4, P5, P8
+│   ├── ForecastService.test.ts
+│   └── ForecastService.prop.test.ts     # P7, P8, P9, P10
 ├── utils/
-│   └── formatters.test.ts           # Pruebas de formateo (property P11)
+│   ├── formatters.test.ts
+│   ├── formatters.prop.test.ts          # P11
+│   └── errorMessages.test.ts            # catálogo exacto + identidad del servicio
 └── components/
-    ├── CitySearchForm.test.ts        # Pruebas de componente UI
-    └── WeatherDisplay.test.ts        # Pruebas de componente UI (property P12, P13)
+    ├── CitySearchForm.test.ts
+    ├── CitySearchForm.prop.test.ts      # P1, P2 (tramo a)
+    ├── WeatherDisplay.test.ts           # fallback, clear, XSS
+    ├── WeatherDisplay.prop.test.ts      # P12
+    ├── LoadingIndicator.test.ts
+    └── ErrorMessage.test.ts
+tests/
+└── evals/                               # manifest, fixtures, contratos y escenarios (e2e)
 ```
