@@ -30,7 +30,7 @@ Esta feature describe una aplicación web que permite al usuario ingresar el nom
 3. CUANDO el User active el botón de envío con un City_Input vacío, LA App DEBERÁ mostrar un mensaje de validación indicando que el nombre de la ciudad es obligatorio.
 4. CUANDO el User active el botón de envío con un City_Input que contenga solo espacios en blanco, LA App DEBERÁ mostrar un mensaje de validación indicando que el nombre de la ciudad es obligatorio.
 5. CUANDO el User active el botón de envío con un City_Input no vacío, LA App DEBERÁ iniciar la solicitud de geocodificación a la Geocoding_API usando el valor recortado de City_Input y DEBERÁ mostrar un indicador de carga hasta que se reciba una respuesta.
-6. SI la solicitud de geocodificación retorna un error o ningún resultado, ENTONCES LA App DEBERÁ mostrar el mensaje de error correspondiente y City_Input DEBERÁ permanecer accesible para que el User pueda ingresar un nuevo nombre de ciudad.
+6. SI la solicitud de geocodificación retorna un error o ningún resultado, ENTONCES LA App DEBERÁ mostrar el mensaje de error correspondiente y City_Input DEBERÁ permanecer habilitado y accesible, y la App DEBERÁ devolverle el foco, para que el User pueda ingresar un nuevo nombre de ciudad.
 
 ---
 
@@ -46,6 +46,7 @@ Esta feature describe una aplicación web que permite al usuario ingresar el nom
 4. SI la solicitud a la Geocoding_API falla por un error de red o no recibe respuesta en 10 segundos, ENTONCES LA App DEBERÁ mostrar un mensaje de error indicando que el servicio de geocodificación no está disponible.
 5. SI el User envía un nombre de ciudad vacío o que contiene solo espacios en blanco, ENTONCES LA App DEBERÁ mostrar un mensaje de error de validación y NO DEBERÁ enviar una solicitud a la Geocoding_API.
 6. SI la Geocoding_API retorna un resultado donde el valor de latitud o longitud está ausente, ENTONCES LA App DEBERÁ tratar la respuesta como cero resultados válidos y mostrar un mensaje informando al User que la ciudad no fue encontrada.
+7. SI la Geocoding_API retorna un código de estado HTTP no 2xx, ENTONCES LA App DEBERÁ mostrar un mensaje de error indicando que el servicio de geocodificación retornó un error.
 
 ---
 
@@ -55,11 +56,12 @@ Esta feature describe una aplicación web que permite al usuario ingresar el nom
 
 #### Criterios de Aceptación
 
-1. CUANDO LA App tenga Coordinates válidas (latitud entre −90 y 90, longitud entre −180 y 180), LA App DEBERÁ enviar una solicitud a la Forecast_API incluyendo latitud, longitud y los parámetros para temperatura actual (temperature_2m), humedad relativa (relativehumidity_2m) y precipitación (precipitation).
+1. CUANDO LA App tenga Coordinates válidas (latitud entre −90 y 90, longitud entre −180 y 180), LA App DEBERÁ enviar una solicitud a la Forecast_API incluyendo latitud, longitud y los parámetros para temperatura actual (temperature_2m), humedad relativa (relative_humidity_2m) y precipitación (precipitation).
 2. CUANDO la Forecast_API retorne una respuesta exitosa, LA App DEBERÁ extraer los valores actuales de temperatura, humedad y precipitación del Weather_Data y ponerlos a disposición para su visualización al User.
 3. SI la solicitud a la Forecast_API falla por un error de red o no recibe respuesta en 10 segundos, ENTONCES LA App DEBERÁ mostrar un mensaje de error indicando que el servicio de pronóstico no está disponible.
 4. SI la Forecast_API retorna un código de estado HTTP no 2xx, ENTONCES LA App DEBERÁ mostrar un mensaje de error indicando que el servicio de pronóstico retornó un error.
 5. SI la Forecast_API retorna una respuesta donde alguno de los campos del clima actual (temperatura, humedad o precipitación) está ausente o es nulo, ENTONCES LA App DEBERÁ mostrar un mensaje de error indicando que los datos meteorológicos están incompletos.
+6. SI la Geocoding_API retorna una latitud fuera del rango [−90, 90] o una longitud fuera del rango [−180, 180], ENTONCES LA App NO DEBERÁ enviar la solicitud a la Forecast_API y DEBERÁ tratar la respuesta como cero resultados válidos, mostrando un mensaje informando al User que la ciudad no fue encontrada.
 
 ---
 
@@ -73,9 +75,10 @@ Esta feature describe una aplicación web que permite al usuario ingresar el nom
 2. CUANDO LA App reciba Weather_Data válido, EL Weather_Display DEBERÁ mostrar la temperatura actual en grados Celsius con la etiqueta de unidad "°C".
 3. CUANDO LA App reciba Weather_Data válido, EL Weather_Display DEBERÁ mostrar la humedad relativa actual como porcentaje con la etiqueta de unidad "%".
 4. CUANDO LA App reciba Weather_Data válido, EL Weather_Display DEBERÁ mostrar la precipitación actual en milímetros con la etiqueta de unidad "mm".
-5. MIENTRAS una solicitud de clima esté en progreso, LA App DEBERÁ mostrar un indicador de carga; el indicador de carga DEBERÁ ocultarse una vez que LA App reciba una respuesta o un error de la Forecast_API.
+5. MIENTRAS una solicitud de clima esté en progreso, LA App DEBERÁ mostrar un indicador de carga; el indicador de carga DEBERÁ ocultarse cuando la búsqueda termine, ya sea con datos del clima o con un error de la Geocoding_API o de la Forecast_API.
 6. CUANDO se inicie una nueva búsqueda, LA App DEBERÁ limpiar el contenido previo del Weather_Display antes de emitir la nueva solicitud a la Forecast_API.
-7. SI LA App recibe Weather_Data válido pero el campo del nombre de ciudad está ausente o vacío, ENTONCES EL Weather_Display DEBERÁ mostrar el nombre de ciudad tal como lo ingresó el User en el campo de búsqueda.
+7. SI LA App recibe Weather_Data válido pero el campo del nombre de ciudad está ausente, vacío o compuesto solo de espacios en blanco, ENTONCES EL Weather_Display DEBERÁ mostrar el nombre de ciudad tal como lo ingresó el User en el campo de búsqueda.
+8. CUANDO el User inicie una nueva búsqueda mientras otra sigue en curso, LA App DEBERÁ ignorar la respuesta de la búsqueda anterior y DEBERÁ mostrar únicamente el resultado o el error de la búsqueda más reciente.
 
 ---
 
@@ -90,3 +93,17 @@ Esta feature describe una aplicación web que permite al usuario ingresar el nom
 3. LA App DEBERÁ formatear los valores numéricos de temperatura y precipitación usando como máximo un decimal antes de renderizarlos en el Weather_Display; los valores de humedad DEBERÁN renderizarse como números enteros sin decimales.
 4. SI la Geocoding_API o la Forecast_API retorna un código de estado HTTP no 2xx, ENTONCES LA App DEBERÁ tratar la respuesta como un fallo y mostrar un mensaje de error al User indicando qué servicio falló y que la solicitud no fue exitosa.
 5. SI la Geocoding_API o la Forecast_API retorna un código de estado HTTP 2xx con un cuerpo de respuesta que no puede parsearse en el objeto esperado, ENTONCES LA App DEBERÁ tratar la respuesta como un fallo y mostrar un mensaje de error al User indicando que los datos recibidos no son válidos.
+
+---
+
+### Requisito 6: Accesibilidad de la interfaz
+
+**Historia de Usuario:** Como User, quiero que la interfaz sea utilizable con teclado y lector de pantalla, para poder consultar el clima sin depender del ratón ni de la vista.
+
+#### Criterios de Aceptación
+
+1. LA App DEBERÁ asociar una etiqueta `<label>` visible al campo City_Input.
+2. LA App DEBERÁ mostrar un indicador de foco visible sobre City_Input y sobre el botón de envío cuando reciban el foco del teclado.
+3. LA App DEBERÁ anunciar el indicador de carga y los mensajes de error mediante regiones `aria-live`, de modo que un lector de pantalla los comunique sin que el User cambie el foco.
+4. LA App DEBERÁ usar una relación de contraste de color de al menos 4.5:1 entre el texto y su fondo en el Weather_Display, los mensajes de error y las etiquetas.
+5. LA App DEBERÁ renderizar el nombre de ciudad retornado por la Geocoding_API como texto plano, sin interpretarlo como marcado HTML.
